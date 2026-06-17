@@ -204,8 +204,8 @@
                 <span v-else>{{ initials(dashboard.shopName) }}</span>
               </div>
               <div>
-                <h2>{{ dashboard.shopName || '欣悦生活馆' }}</h2>
-                <p>账户：{{ dashboard.account || 'xinyue_store' }}</p>
+                <h2>{{ displayText(dashboard.shopName) }}</h2>
+                <p>账户：{{ displayText(dashboard.account) }}</p>
                 <small>更新于 {{ dashboard.updatedAt || '-' }}</small>
               </div>
             </header>
@@ -298,13 +298,7 @@
                 <input v-model="cashier.keyword" placeholder="输入完整手机号或后4位" />
                 <button class="ghost-button" type="button" @click="lookupCashierMember">{{ selectedCashierMember ? selectedCashierMember.name : '会员姓名' }}</button>
                 <input v-model="cashier.amount" placeholder="输入金额" inputmode="decimal" />
-                <select v-model="cashier.paymentMethod">
-                  <option value="CASH">现金</option>
-                  <option value="WECHAT">微信</option>
-                  <option value="ALIPAY">支付宝</option>
-                  <option value="CARD">银行卡</option>
-                  <option value="OTHER">其他</option>
-                </select>
+                <AppSelect v-model="cashier.paymentMethod" :options="PAYMENT_METHOD_OPTIONS" aria-label="支付方式" />
               </div>
               <input v-if="cashierMode === 'CONSUMPTION'" v-model="cashier.itemName" placeholder="项目名称" />
               <input v-model="cashier.remark" placeholder="备注" />
@@ -356,8 +350,8 @@
         <header v-if="!adminSelectedMember" class="admin-topbar">
           <strong>{{ adminTitle }}</strong>
           <div>
-            <span>Admin</span>
-            <small>系统管理员</small>
+            <span>{{ displayText(currentAdmin.displayName || currentAdmin.username) }}</span>
+            <small>{{ displayText(currentAdmin.roleLabel || currentAdmin.role) }}</small>
             <button class="icon-button admin-logout-button" type="button" @click="logoutAdmin">退出</button>
           </div>
         </header>
@@ -399,11 +393,7 @@
           </div>
           <div class="admin-filter">
             <input v-model="storeFilter.keyword" placeholder="门店名称 / 账号 / 手机号" @keyup.enter="searchAdminStores" />
-            <select v-model="storeFilter.status">
-              <option value="">全部状态</option>
-              <option value="ACTIVE">正常</option>
-              <option value="DISABLED">停用</option>
-            </select>
+            <AppSelect v-model="storeFilter.status" :options="STORE_STATUS_OPTIONS" aria-label="门店状态" />
             <button class="ghost-button" type="button" @click="searchAdminStores">筛选</button>
           </div>
           <section class="admin-panel">
@@ -431,41 +421,87 @@
           </section>
         </section>
 
-        <section v-else-if="adminTab === 'members'" :class="adminSelectedMember ? 'member-detail-content' : 'admin-content'">
-          <div v-if="!adminSelectedMember" class="section-title">
-            <div><h1>会员管理中心</h1><p>查看和管理所有门店会员信息</p></div>
-            <button class="admin-primary" type="button" @click="exportMembers">导出数据</button>
-          </div>
-          <div v-if="!adminSelectedMember" class="admin-filter">
-            <input v-model="adminMemberFilter.mobile" placeholder="输入会员手机号" />
-            <input v-model="adminMemberFilter.name" placeholder="输入会员姓名" />
-            <select v-model="adminMemberFilter.storeId">
-              <option value="">全部门店</option>
-              <option v-for="store in adminStoreOptions" :key="store.id" :value="store.id">{{ store.shopName }}</option>
-            </select>
-            <input v-model="adminMemberFilter.rechargeMin" placeholder="充值最小" />
-            <input v-model="adminMemberFilter.rechargeMax" placeholder="充值最大" />
-            <button class="ghost-button" type="button" @click="searchAdminMembers">筛选</button>
-          </div>
-          <section v-if="!adminSelectedMember" class="admin-panel">
-            <table>
-              <thead><tr><th>手机号</th><th>姓名</th><th>所属门店</th><th>加入时间</th><th>待消费金额</th><th>操作</th></tr></thead>
+        <section v-else-if="adminTab === 'members'" :class="adminSelectedMember ? 'member-detail-content' : 'admin-content member-management-view'">
+          <template v-if="!adminSelectedMember">
+            <header class="member-management-head">
+              <h1>会员管理中心</h1>
+              <p>查看和管理所有门店的会员信息，支持多维度筛选和详情查看</p>
+            </header>
+
+            <form class="admin-member-filter" @submit.prevent="searchAdminMembers">
+              <label class="member-filter-field">
+                <span>手机号</span>
+                <input v-model="adminMemberFilter.mobile" placeholder="输入会员手机号" />
+              </label>
+              <label class="member-filter-field">
+                <span>姓名</span>
+                <input v-model="adminMemberFilter.name" placeholder="输入会员姓名" />
+              </label>
+              <label class="member-filter-field">
+                <span>所属门店</span>
+                <AppSelect v-model="adminMemberFilter.storeId" :options="adminStoreSelectOptions" aria-label="所属门店" />
+              </label>
+              <fieldset class="member-filter-range">
+                <legend>充值金额范围</legend>
+                <input v-model="adminMemberFilter.rechargeMin" inputmode="decimal" placeholder="最小" />
+                <span aria-hidden="true">-</span>
+                <input v-model="adminMemberFilter.rechargeMax" inputmode="decimal" placeholder="最大" />
+              </fieldset>
+              <fieldset class="member-filter-range">
+                <legend>消费金额范围</legend>
+                <input v-model="adminMemberFilter.consumptionMin" inputmode="decimal" placeholder="最小" />
+                <span aria-hidden="true">-</span>
+                <input v-model="adminMemberFilter.consumptionMax" inputmode="decimal" placeholder="最大" />
+              </fieldset>
+              <div class="member-filter-actions">
+                <button class="ghost-button member-reset-button" type="button" @click="resetAdminMemberFilters">
+                  <span aria-hidden="true">↻</span>
+                  重置筛选
+                </button>
+                <button class="admin-primary member-export-button" type="button" @click="exportMembers">
+                  <span aria-hidden="true">↓</span>
+                  导出数据
+                </button>
+              </div>
+            </form>
+
+            <section class="admin-member-table-panel">
+              <table class="admin-member-table">
+                <colgroup>
+                  <col class="member-avatar-col" />
+                  <col class="member-mobile-col" />
+                  <col class="member-name-col" />
+                  <col class="member-store-col" />
+                  <col class="member-joined-col" />
+                  <col class="member-balance-col" />
+                  <col class="member-action-col" />
+                </colgroup>
+              <thead><tr><th>头像</th><th>手机号</th><th>姓名</th><th>所属门店</th><th>加入时间</th><th>待消费金额</th><th>操作</th></tr></thead>
               <tbody>
                 <tr v-for="member in adminMembers" :key="member.id">
-                  <td>{{ member.mobile }}</td>
-                  <td>{{ member.name }}</td>
+                  <td>
+                    <span class="admin-member-avatar" :class="{ fallback: !avatarImageSrc(member.avatarUrl) }">
+                      <img v-if="avatarImageSrc(member.avatarUrl)" :src="avatarImageSrc(member.avatarUrl)" :alt="`${member.name || '会员'}头像`" />
+                      <span v-else>{{ avatarText(member.avatarUrl, member.name) }}</span>
+                    </span>
+                  </td>
+                  <td class="member-mobile-cell">{{ member.mobile }}</td>
+                  <td class="member-name-cell">{{ member.name }}</td>
                   <td>{{ member.storeName }}</td>
-                  <td>{{ member.joinedAt }}</td>
-                  <td><span class="amount-pill">{{ money(member.totalBalance) }}</span></td>
-                  <td><button type="button" @click="openAdminMember(member)">查看</button></td>
+                  <td class="member-date-cell">{{ memberListDate(member.joinedAt) }}</td>
+                  <td><span class="member-balance-pill">{{ memberListBalance(member) }}</span></td>
+                  <td>
+                    <button class="member-row-action" type="button" :aria-label="`查看${member.name || '会员'}详情`" @click="openAdminMember(member)">›</button>
+                  </td>
                 </tr>
                 <tr v-if="!adminMembers.length">
-                  <td class="empty-table" colspan="6">暂无会员数据</td>
+                  <td class="empty-table" colspan="7">暂无会员数据</td>
                 </tr>
               </tbody>
             </table>
-            <PaginationControls :page="adminMemberPage" :page-sizes="PAGE_SIZE_OPTIONS" @change="changeAdminMemberPage" />
-          </section>
+              <PaginationControls class="admin-member-pagination" :page="adminMemberPage" :page-sizes="PAGE_SIZE_OPTIONS" @change="changeAdminMemberPage" />
+            </section>
+          </template>
           <section v-else class="member-detail-page">
             <header class="member-detail-header">
               <button class="detail-back-button" type="button" aria-label="返回会员列表" @click="closeAdminMemberDetail">‹</button>
@@ -555,8 +591,8 @@
           <h1>商家活跃度分析</h1>
           <p>三期规划入口，当前展示种子数据和筛选形态。</p>
           <div class="admin-filter">
-            <select><option>全部门店</option></select>
-            <select><option>全部状态</option></select>
+            <AppSelect v-model="activityStoreFilter" :options="ACTIVITY_STORE_OPTIONS" aria-label="活跃度门店" />
+            <AppSelect v-model="activityStatusFilter" :options="ACTIVITY_STATUS_OPTIONS" aria-label="活跃度状态" />
             <button class="ghost-button" type="button">重置筛选</button>
           </div>
           <section class="admin-panel">
@@ -609,7 +645,7 @@
         </section>
         <label><span>手机号 *</span><input v-model="memberForm.mobile" placeholder="请输入手机号" /></label>
         <label><span>姓名 *</span><input v-model="memberForm.name" placeholder="请输入姓名" /></label>
-        <label><span>性别 *</span><select v-model="memberForm.gender"><option value="MALE">男</option><option value="FEMALE">女</option></select></label>
+        <label><span>性别 *</span><AppSelect v-model="memberForm.gender" :options="GENDER_OPTIONS" aria-label="会员性别" /></label>
         <label><span>年龄 *</span><input v-model="memberForm.age" inputmode="numeric" placeholder="请输入年龄" /></label>
         <button class="primary-button full" type="submit">确认添加</button>
         <button class="ghost-button full" type="button" @click="closeMemberModal">取消</button>
@@ -657,6 +693,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 
+import AppSelect from '@/components/AppSelect.vue'
+import type { AppSelectOption } from '@/components/AppSelect.vue'
 import { http, type ApiResponse } from './api/http'
 import PaginationControls from './components/PaginationControls.vue'
 
@@ -671,6 +709,28 @@ type PageState = { pageNo: number; pageSize: number }
 type ApiPageState = PageState & { total: number; pages: number }
 type BuiltinAvatar = { value: string; label: string; glyph: string; tone: string }
 
+const PAYMENT_METHOD_OPTIONS: AppSelectOption[] = [
+  { value: 'CASH', label: '现金' },
+  { value: 'WECHAT', label: '微信' },
+  { value: 'ALIPAY', label: '支付宝' },
+  { value: 'CARD', label: '银行卡' },
+  { value: 'OTHER', label: '其他' }
+]
+const STORE_STATUS_OPTIONS: AppSelectOption[] = [
+  { value: '', label: '全部状态' },
+  { value: 'ACTIVE', label: '正常' },
+  { value: 'DISABLED', label: '停用' }
+]
+const GENDER_OPTIONS: AppSelectOption[] = [
+  { value: 'MALE', label: '男' },
+  { value: 'FEMALE', label: '女' }
+]
+const ACTIVITY_STORE_OPTIONS: AppSelectOption[] = [
+  { value: '', label: '全部门店' }
+]
+const ACTIVITY_STATUS_OPTIONS: AppSelectOption[] = [
+  { value: '', label: '全部状态' }
+]
 const PAGE_SIZE_OPTIONS = [5, 10, 20]
 const MOBILE_PAGE_SIZE = 10
 const MOBILE_PAGE_QUERY = '(max-width: 900px)'
@@ -701,6 +761,7 @@ const merchantLogin = reactive({ account: 'xinyue_store', password: '123456' })
 const adminLogin = reactive({ username: 'superadmin', password: 'Member@123' })
 const dashboard = ref<AnyMap>({})
 const currentStore = ref<AnyMap>({})
+const currentAdmin = ref<AnyMap>({})
 const tiers = ref<AnyMap[]>([])
 const campaigns = ref<AnyMap[]>([])
 const members = ref<AnyMap[]>([])
@@ -733,7 +794,7 @@ const adminOverviewStorePage = createPageState()
 const adminStores = ref<AnyMap[]>([])
 const adminStorePage = createApiPageState()
 const adminMembers = ref<AnyMap[]>([])
-const adminMemberPage = createApiPageState()
+const adminMemberPage = createApiPageState(10)
 const adminSelectedMember = ref<AnyMap | null>(null)
 const adminRechargeTransactions = ref<AnyMap[]>([])
 const adminConsumptionTransactions = ref<AnyMap[]>([])
@@ -741,6 +802,8 @@ const adminRechargePage = createApiPageState()
 const adminConsumptionPage = createApiPageState()
 const activityRows = ref<AnyMap[]>([])
 const activityPage = createPageState()
+const activityStoreFilter = ref('')
+const activityStatusFilter = ref('')
 const storeModalVisible = ref(false)
 const storeFilter = reactive({ keyword: '', status: '' })
 const storeForm = reactive({ id: 0, account: '', shopName: '', contactMobile: '', address: '', initialPassword: '' })
@@ -749,7 +812,9 @@ const adminMemberFilter = reactive({
   name: '',
   storeId: '',
   rechargeMin: '',
-  rechargeMax: ''
+  rechargeMax: '',
+  consumptionMin: '',
+  consumptionMax: ''
 })
 const correctionForm = reactive({ correctionType: 'ADD_RECHARGE', amount: '', reason: '' })
 
@@ -764,6 +829,13 @@ const adminStoreOptions = computed(() => {
   const stores = rows(adminOverview.value.stores)
   return stores.length ? stores : adminStores.value
 })
+const adminStoreSelectOptions = computed<AppSelectOption[]>(() => [
+  { value: '', label: '全部门店' },
+  ...adminStoreOptions.value.map((store) => ({
+    value: String(store.id),
+    label: String(store.shopName || store.account || store.id)
+  }))
+])
 const adminOverviewStorePageInfo = computed(() => paginateLocal(rows(adminOverview.value.stores), adminOverviewStorePage))
 const visibleAdminOverviewStores = computed(() => adminOverviewStorePageInfo.value.records)
 const activityPageInfo = computed(() => paginateLocal(activityRows.value, activityPage))
@@ -892,10 +964,11 @@ async function tryRestoreMerchant() {
 
 async function tryRestoreAdmin() {
   try {
-    await apiGet<AnyMap>('/auth/admin/me')
+    currentAdmin.value = await apiGet<AnyMap>('/auth/admin/me')
     adminAuthed.value = true
     await loadAdminBase()
   } catch {
+    currentAdmin.value = {}
     adminAuthed.value = false
   }
 }
@@ -911,7 +984,8 @@ async function loginMerchant() {
 
 async function loginAdmin() {
   await guarded(async () => {
-    await apiPost<AnyMap>('/auth/admin/login', adminLogin)
+    const payload = await apiPost<AnyMap>('/auth/admin/login', adminLogin)
+    currentAdmin.value = payload.user
     adminAuthed.value = true
     await loadAdminBase()
   }, '登录成功')
@@ -928,6 +1002,7 @@ async function logoutMerchant() {
 async function logoutAdmin() {
   await guarded(async () => {
     await apiPost<void>('/auth/admin/logout')
+    currentAdmin.value = {}
     adminAuthed.value = false
   }, '已退出')
 }
@@ -1235,6 +1310,8 @@ async function loadAdminMembers() {
   if (adminMemberFilter.storeId) params.storeId = adminMemberFilter.storeId
   if (adminMemberFilter.rechargeMin) params.rechargeMin = adminMemberFilter.rechargeMin
   if (adminMemberFilter.rechargeMax) params.rechargeMax = adminMemberFilter.rechargeMax
+  if (adminMemberFilter.consumptionMin) params.consumptionMin = adminMemberFilter.consumptionMin
+  if (adminMemberFilter.consumptionMax) params.consumptionMax = adminMemberFilter.consumptionMax
   const page = await apiGet<AnyMap>('/admin/members', params)
   adminMembers.value = page.records || []
   applyApiPage(adminMemberPage, page)
@@ -1255,6 +1332,18 @@ function changeAdminStorePage(change: PageChange) {
 }
 
 function searchAdminMembers() {
+  adminMemberPage.pageNo = 1
+  void guarded(loadAdminMembers)
+}
+
+function resetAdminMemberFilters() {
+  adminMemberFilter.mobile = ''
+  adminMemberFilter.name = ''
+  adminMemberFilter.storeId = ''
+  adminMemberFilter.rechargeMin = ''
+  adminMemberFilter.rechargeMax = ''
+  adminMemberFilter.consumptionMin = ''
+  adminMemberFilter.consumptionMax = ''
   adminMemberPage.pageNo = 1
   void guarded(loadAdminMembers)
 }
@@ -1375,6 +1464,10 @@ async function exportMembers() {
       name: adminMemberFilter.name
     }
     if (adminMemberFilter.storeId) params.storeId = adminMemberFilter.storeId
+    if (adminMemberFilter.rechargeMin) params.rechargeMin = adminMemberFilter.rechargeMin
+    if (adminMemberFilter.rechargeMax) params.rechargeMax = adminMemberFilter.rechargeMax
+    if (adminMemberFilter.consumptionMin) params.consumptionMin = adminMemberFilter.consumptionMin
+    if (adminMemberFilter.consumptionMax) params.consumptionMax = adminMemberFilter.consumptionMax
     const response = await http.get('/admin/members/export', { params, responseType: 'blob' })
     const url = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'text/csv;charset=utf-8' }))
     const link = document.createElement('a')
@@ -1427,6 +1520,11 @@ function labelTransaction(tx: AnyMap) {
   return { ...tx, typeLabel: labels[tx.type] || tx.type }
 }
 
+function displayText(value: unknown) {
+  const text = String(value ?? '').trim()
+  return text || '-'
+}
+
 function money(value: unknown) {
   const number = Number(String(value ?? '0').replace(/[¥,]/g, ''))
   return `¥${Number.isFinite(number) ? number.toFixed(2) : '0.00'}`
@@ -1454,6 +1552,16 @@ function detailDateTime(value: unknown) {
   const text = String(value || '-')
   if (text === '-') return text
   return text.replace(/-/g, '/').slice(0, 16)
+}
+
+function memberListDate(value: unknown) {
+  const text = String(value || '-')
+  if (text === '-') return text
+  return text.replace(/-/g, '/').split(' ')[0]
+}
+
+function memberListBalance(member: AnyMap) {
+  return money(member.totalBalance)
 }
 
 function shortDateTime(value: unknown) {

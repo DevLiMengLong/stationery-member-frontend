@@ -32,22 +32,22 @@ test('recent transaction cards use compact horizontal rows', () => {
     'recent card spacing should be compact'
   )
   assert.equal(
-    hasRuleWith('.recent-card-head', [/\bdisplay:\s*grid\b/, /\bgrid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto\b/]),
+    hasRuleWith('.recent-card-head', [/\bdisplay:\s*grid\b/, /\bgrid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto\b/, /\bfont-size:\s*12px\b/]),
     true,
     'serial number and status should share a single header row'
   )
   assert.equal(
-    hasRuleWith('.recent-status', [/\bjustify-self:\s*end\b/, /\bfont-size:\s*14px\b/]),
+    hasRuleWith('.recent-status', [/\bjustify-self:\s*end\b/, /\bfont-size:\s*12px\b/]),
     true,
     'status badge should stay small and pinned to the right'
   )
   assert.equal(
-    hasRuleWith('.recent-identity', [/\bdisplay:\s*flex\b/, /\bgap:\s*6px\s+22px\b/, /\bfont-size:\s*17px\b/]),
+    hasRuleWith('.recent-identity', [/\bdisplay:\s*flex\b/, /\bgap:\s*6px\s+22px\b/, /\bfont-size:\s*15px\b/]),
     true,
     'member identity should be a compact horizontal row'
   )
   assert.equal(
-    hasRuleWith('.recent-money-row', [/\bdisplay:\s*flex\b/, /\bgap:\s*6px\s+16px\b/, /\bfont-size:\s*13px\b/, /\bpadding-top:\s*8px\b/]),
+    hasRuleWith('.recent-money-row', [/\bdisplay:\s*flex\b/, /\bgap:\s*6px\s+16px\b/, /\bfont-size:\s*12px\b/, /\bpadding-top:\s*8px\b/]),
     true,
     'amount fields should use the compact multi-column row'
   )

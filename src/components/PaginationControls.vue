@@ -10,15 +10,22 @@
     </div>
     <label v-if="!isMobilePagination" class="page-size-control">
       <span>每页</span>
-      <select :value="page.pageSize" @change="changePageSize">
-        <option v-for="size in pageSizes" :key="size" :value="size">{{ size }} 条</option>
-      </select>
+      <AppSelect
+        class="page-size-select"
+        :model-value="page.pageSize"
+        :options="pageSizeOptions"
+        aria-label="每页条数"
+        @change="changePageSize"
+      />
     </label>
   </nav>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+import AppSelect from '@/components/AppSelect.vue'
+import type { AppSelectOption } from '@/components/AppSelect.vue'
 
 export interface PaginationPage {
   pageNo: number
@@ -43,6 +50,9 @@ const emit = defineEmits<{
 }>()
 
 const safePages = computed(() => Math.max(1, Number(props.page.pages) || 1))
+const pageSizeOptions = computed<AppSelectOption[]>(() => (
+  props.pageSizes.map((size) => ({ label: `${size} 条`, value: size }))
+))
 const viewportMobilePagination = ref(false)
 const isMobilePagination = computed(() => props.mobileMode || viewportMobilePagination.value)
 
@@ -66,9 +76,8 @@ function enforceMobilePageSize() {
   }
 }
 
-function changePageSize(event: Event) {
-  const select = event.target as HTMLSelectElement
-  emitChange(1, Number(select.value) || props.page.pageSize)
+function changePageSize(value: string | number) {
+  emitChange(1, Number(value) || props.page.pageSize)
 }
 
 onMounted(() => {

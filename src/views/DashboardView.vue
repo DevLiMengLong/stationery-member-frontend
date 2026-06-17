@@ -57,7 +57,7 @@
       </section>
 
       <p v-if="!memberStore.apiAvailable" class="notice">
-        后端暂不可用，当前展示前端示例数据。启动 MySQL、Redis 和后端服务后刷新即可读取真实接口。
+        后端暂不可用，当前未加载会员数据。启动 MySQL、Redis 和后端服务后刷新即可读取真实接口。
       </p>
 
       <MemberTable :members="memberStore.members" />
@@ -79,10 +79,7 @@
         </label>
         <label>
           <span>等级</span>
-          <select v-model="form.level">
-            <option value="NORMAL">NORMAL</option>
-            <option value="VIP">VIP</option>
-          </select>
+          <AppSelect v-model="form.level" :options="LEVEL_OPTIONS" aria-label="会员等级" />
         </label>
         <label>
           <span>初始积分</span>
@@ -100,8 +97,15 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 
+import AppSelect from '@/components/AppSelect.vue'
+import type { AppSelectOption } from '@/components/AppSelect.vue'
 import MemberTable from '@/components/MemberTable.vue'
 import { useMemberStore } from '@/stores/member'
+
+const LEVEL_OPTIONS: AppSelectOption[] = [
+  { value: 'NORMAL', label: 'NORMAL' },
+  { value: 'VIP', label: 'VIP' }
+]
 
 const memberStore = useMemberStore()
 const creating = ref(false)
