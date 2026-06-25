@@ -2287,13 +2287,13 @@ tr:hover td {
 
 .cashier-view {
   grid-template-rows: auto auto auto auto minmax(0, 1fr);
-  gap: 10px;
+  gap: 8px;
   height: 100vh;
   height: 100dvh;
   min-height: 0;
   background: #faf9f7;
   overflow: hidden;
-  padding: 18px 16px 74px;
+  padding: 14px 16px 74px;
 }
 
 .cashier-tabs {
@@ -2305,15 +2305,15 @@ tr:hover td {
 
 .cashier-tabs button {
   display: flex;
-  min-height: 56px;
+  min-height: 48px;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 9px;
   border: 1px solid #e3ded8;
   border-radius: 8px;
   background: #fff;
   color: #2f2d2b;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   box-shadow: none;
 }
@@ -2355,8 +2355,8 @@ tr:hover td {
 }
 
 .cashier-tab-icon {
-  width: 24px;
-  height: 24px;
+  width: 21px;
+  height: 21px;
   flex: 0 0 auto;
   fill: none;
   stroke: currentColor;
@@ -3187,18 +3187,18 @@ td button:not(:disabled):hover {
   }
 
   .cashier-tabs {
-    gap: 12px;
+    gap: 10px;
   }
 
   .cashier-tabs button {
-    min-height: 58px;
-    gap: 10px;
-    font-size: 19px;
+    min-height: 46px;
+    gap: 8px;
+    font-size: 17px;
   }
 
   .cashier-tab-icon {
-    width: 21px;
-    height: 21px;
+    width: 19px;
+    height: 19px;
   }
 
   .recent-card {

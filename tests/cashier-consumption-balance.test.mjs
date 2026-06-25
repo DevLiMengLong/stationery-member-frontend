@@ -63,6 +63,24 @@ test('cashier phone placeholder stays fully visible on narrow screens', () => {
   )
 })
 
+test('cashier mode tabs stay compact so the keypad and submit button fit', () => {
+  assert.equal(
+    hasRuleWith('.cashier-view', [/\bgap:\s*8px\b/]),
+    true,
+    'cashier view should use tighter vertical spacing above the input panel'
+  )
+  assert.equal(
+    hasRuleWith('.cashier-tabs button', [/\bmin-height:\s*48px\b/, /\bfont-size:\s*18px\b/]),
+    true,
+    'cashier recharge and deduction tabs should stay compact on mobile'
+  )
+  assert.doesNotMatch(
+    css,
+    /@media \(max-width: 480px\)[\s\S]*?\.cashier-tabs button\s*\{[\s\S]*?\bmin-height:\s*58px\b/,
+    'narrow screens should not enlarge the cashier mode tabs and steal keypad space'
+  )
+})
+
 test('cashier amount is entered only from the on-page keypad', () => {
   const cashier = cashierView()
 
