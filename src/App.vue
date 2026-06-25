@@ -276,7 +276,11 @@
                   <span class="merchant-member-name-text">{{ member.name }}</span>
                   <small class="merchant-member-gender">{{ genderText(member.gender) }}</small>
                 </strong>
-                <span class="merchant-member-meta-line">{{ member.mobile }} · <em class="merchant-member-age">{{ member.age }}岁</em></span>
+                <span class="merchant-member-meta-line">
+                  <span class="merchant-member-mobile">{{ member.mobile }}</span>
+                  <span class="merchant-member-separator" aria-hidden="true">·</span>
+                  <em class="merchant-member-age">{{ member.age }}岁</em>
+                </span>
               </div>
               <b>{{ money(member.totalBalance) }}<small>余额</small></b>
               <i>›</i>
@@ -323,7 +327,7 @@
               <div class="cashier-form-grid">
                 <div class="cashier-control">
                   <span class="cashier-field-label">会员手机号</span>
-                  <div class="cashier-field">
+                  <div class="cashier-field cashier-phone-field">
                     <span aria-hidden="true">⌕</span>
                     <input v-model="cashier.keyword" aria-label="会员手机号" placeholder="输入手机号或后4位" />
                   </div>

@@ -940,10 +940,26 @@ td {
 }
 
 .merchant-member-meta-line {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  overflow: visible;
+  font-size: 14px;
+  line-height: 1.28;
+  white-space: nowrap;
+}
+
+.merchant-member-mobile {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.merchant-member-separator,
+.merchant-member-age {
+  flex: 0 0 auto;
 }
 
 .merchant-member-age {
@@ -2509,6 +2525,8 @@ tr:hover td {
 }
 
 .cashier-field input {
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 46px;
   border: 0;
   border-radius: 0;
@@ -2522,6 +2540,20 @@ tr:hover td {
 .cashier-field input:focus {
   border: 0;
   box-shadow: none;
+}
+
+.cashier-phone-field span {
+  flex: 0 0 34px;
+  font-size: 18px;
+}
+
+.cashier-phone-field input {
+  font-size: 15px;
+}
+
+.cashier-phone-field input::placeholder {
+  font-size: 14px;
+  letter-spacing: 0;
 }
 
 .cashier-member-button,
