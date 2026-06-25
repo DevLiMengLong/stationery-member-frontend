@@ -22,6 +22,14 @@ function cashierView() {
   return appVue.slice(cashierViewStart, cashierViewEnd)
 }
 
+function sourceFunction(name) {
+  const functionStart = appVue.indexOf(`function ${name}`)
+  assert.notEqual(functionStart, -1, `${name} should exist`)
+  const functionEnd = appVue.indexOf('\n}\n\n', functionStart)
+  assert.notEqual(functionEnd, -1, `${name} should have a readable function body`)
+  return appVue.slice(functionStart, functionEnd + 3)
+}
+
 test('consumption cashier shows current balance instead of item input', () => {
   const cashier = cashierView()
 
@@ -175,5 +183,20 @@ test('cashier submission clears member and amount inputs after success', () => {
     appVue,
     /syncSelectedCashierMemberBalance\(transaction\)\s*[\r\n]+\s*cashier\.amount = ''/,
     'cashier submission should not leave phone/member/balance state uncleared by only clearing the amount'
+  )
+})
+
+test('cashier mode switch clears phone and amount inputs instead of reusing the previous member', () => {
+  const setCashierMode = sourceFunction('setCashierMode')
+
+  assert.match(
+    setCashierMode,
+    /cashierMode\.value = mode[\s\S]*clearCashierForm\(\)[\s\S]*void guarded\(loadRecentTransactions\)/,
+    'switching recharge and deduction should clear phone, amount, selected member, balance, candidates, and active input'
+  )
+  assert.doesNotMatch(
+    setCashierMode,
+    /normalizedCashierKeyword|autoLookupCashierMember/,
+    'switching modes should not auto-lookup with the previous phone number'
   )
 })

@@ -1253,13 +1253,7 @@ function backToMembers() {
 
 function setCashierMode(mode: CashierMode) {
   cashierMode.value = mode
-  selectedCashierMember.value = null
-  candidateMembers.value = []
-  candidateModalVisible.value = false
-  cashier.amount = ''
-  activeCashierInput.value = 'keyword'
-  const keywordText = normalizedCashierKeyword()
-  if (keywordText.length >= 4) void autoLookupCashierMember(keywordText)
+  clearCashierForm()
   void guarded(loadRecentTransactions)
 }
 
@@ -1375,6 +1369,7 @@ function syncSelectedCashierMemberBalance(transaction: AnyMap) {
 }
 
 function clearCashierForm() {
+  cashierLookupRequestId += 1
   cashier.keyword = ''
   cashier.amount = ''
   selectedCashierMember.value = null
