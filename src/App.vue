@@ -158,13 +158,15 @@
           </header>
           <div class="mobile-content">
             <section class="panel-card member-profile">
-              <div class="avatar large" :class="avatarToneClass(selectedMember.avatarUrl)">
-                <img v-if="avatarImageSrc(selectedMember.avatarUrl)" :src="avatarImageSrc(selectedMember.avatarUrl)" alt="" />
-                <span v-else>{{ avatarText(selectedMember.avatarUrl, selectedMember.name) }}</span>
-              </div>
-              <div>
-                <h3>{{ selectedMember.name }}</h3>
-                <p>{{ selectedMember.mobile }}</p>
+              <div class="member-profile-head">
+                <div class="avatar large" :class="avatarToneClass(selectedMember.avatarUrl)">
+                  <img v-if="avatarImageSrc(selectedMember.avatarUrl)" :src="avatarImageSrc(selectedMember.avatarUrl)" alt="" />
+                  <span v-else>{{ avatarText(selectedMember.avatarUrl, selectedMember.name) }}</span>
+                </div>
+                <div class="member-profile-identity">
+                  <h3>{{ selectedMember.name }}</h3>
+                  <p>{{ selectedMember.mobile }}</p>
+                </div>
               </div>
               <div class="info-grid">
                 <div><span>性别</span><strong>{{ genderText(selectedMember.gender) }}</strong></div>
@@ -269,9 +271,12 @@
                 <img v-if="avatarImageSrc(member.avatarUrl)" :src="avatarImageSrc(member.avatarUrl)" alt="" />
                 <span v-else>{{ avatarText(member.avatarUrl, member.name) }}</span>
               </div>
-              <div>
-                <strong>{{ member.name }} <small>{{ genderText(member.gender) }}</small></strong>
-                <span>{{ member.mobile }} · {{ member.age }}岁</span>
+              <div class="merchant-member-row-info">
+                <strong class="merchant-member-name-line">
+                  <span class="merchant-member-name-text">{{ member.name }}</span>
+                  <small class="merchant-member-gender">{{ genderText(member.gender) }}</small>
+                </strong>
+                <span class="merchant-member-meta-line">{{ member.mobile }} · <em class="merchant-member-age">{{ member.age }}岁</em></span>
               </div>
               <b>{{ money(member.totalBalance) }}<small>余额</small></b>
               <i>›</i>
@@ -316,16 +321,25 @@
             <h2>{{ cashierMode === 'RECHARGE' ? '充值输入' : '扣款输入' }}</h2>
             <section class="cashier-panel" :class="{ blue: cashierMode === 'CONSUMPTION' }">
               <div class="cashier-form-grid">
-                <div class="cashier-field">
-                  <span aria-hidden="true">☎</span>
-                  <input v-model="cashier.keyword" aria-label="会员手机号" placeholder="输入后4位" />
+                <div class="cashier-control">
+                  <span class="cashier-field-label">会员手机号</span>
+                  <div class="cashier-field">
+                    <span aria-hidden="true">⌕</span>
+                    <input v-model="cashier.keyword" aria-label="会员手机号" placeholder="输入手机号或后4位" />
+                  </div>
                 </div>
                 <button class="ghost-button cashier-member-button" type="button" @click="lookupCashierMember">{{ selectedCashierMember ? selectedCashierMember.name : '会员姓名' }}</button>
-                <div class="cashier-field">
-                  <span aria-hidden="true">¥</span>
-                  <input v-model="cashier.amount" aria-label="收银金额" placeholder="输入金额" inputmode="decimal" />
+                <div class="cashier-control">
+                  <span class="cashier-field-label">{{ cashierMode === 'RECHARGE' ? '充值金额' : '扣款金额' }}</span>
+                  <div class="cashier-field">
+                    <span aria-hidden="true">¥</span>
+                    <input v-model="cashier.amount" aria-label="收银金额" placeholder="0.00" inputmode="decimal" />
+                  </div>
                 </div>
-                <input v-if="cashierMode === 'CONSUMPTION'" v-model="cashier.itemName" class="cashier-side-input" placeholder="消费项目" />
+                <div v-if="cashierMode === 'CONSUMPTION'" class="cashier-balance-card">
+                  <span>现有余额</span>
+                  <strong>{{ selectedCashierMember ? money(selectedCashierMember.totalBalance) : '--' }}</strong>
+                </div>
                 <button v-else class="cashier-side-action" type="button" disabled>多充<br />多赠</button>
               </div>
               <div class="keypad">
@@ -784,7 +798,7 @@ const merchantResetVisible = ref(false)
 const resetForm = reactive({ mobile: '', code: '', password: '' })
 
 const cashierMode = ref<CashierMode>('RECHARGE')
-const cashier = reactive({ keyword: '', amount: '', paymentMethod: 'CASH', itemName: '' })
+const cashier = reactive({ keyword: '', amount: '', paymentMethod: 'CASH' })
 const selectedCashierMember = ref<AnyMap | null>(null)
 const candidateMembers = ref<AnyMap[]>([])
 const candidateModalVisible = ref(false)
@@ -1215,7 +1229,6 @@ function setCashierMode(mode: CashierMode) {
   cashierMode.value = mode
   selectedCashierMember.value = null
   cashier.amount = ''
-  cashier.itemName = ''
   void guarded(loadRecentTransactions)
 }
 
@@ -1260,12 +1273,11 @@ async function submitCashier() {
       memberId: selectedCashierMember.value?.id,
       amount: cashier.amount,
       paymentMethod: cashier.paymentMethod,
-      itemName: cashierMode.value === 'RECHARGE' ? '会员充值' : cashier.itemName || '消费扣款',
+      itemName: cashierMode.value === 'RECHARGE' ? '会员充值' : '消费扣款',
       idempotencyKey: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
     }
     await apiPost(cashierMode.value === 'RECHARGE' ? '/merchant/transactions/recharge' : '/merchant/transactions/consume', body)
     cashier.amount = ''
-    cashier.itemName = ''
     await Promise.all([loadRecentTransactions(), loadDashboard(), loadMerchantMembers()])
   }, cashierMode.value === 'RECHARGE' ? '充值成功' : '扣款成功')
 }
