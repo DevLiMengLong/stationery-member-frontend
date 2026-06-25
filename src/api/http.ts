@@ -19,4 +19,11 @@ http.interceptors.response.use((response) => {
     return Promise.reject(new Error(payload.message || 'Request failed'))
   }
   return response
+}, (error) => {
+  if (axios.isAxiosError(error)) {
+    const payload = error.response?.data as Partial<ApiResponse<unknown>> | undefined
+    const message = typeof payload?.message === 'string' ? payload.message.trim() : ''
+    return Promise.reject(new Error(message || error.message || 'Request failed'))
+  }
+  return Promise.reject(error instanceof Error ? error : new Error('Request failed'))
 })

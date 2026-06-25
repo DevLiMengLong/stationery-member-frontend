@@ -718,7 +718,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 import AppSelect from '@/components/AppSelect.vue'
 import type { AppSelectOption } from '@/components/AppSelect.vue'
@@ -771,6 +771,8 @@ const appMode = ref<AppMode>(window.location.pathname.startsWith('/admin') ? 'ad
 const busy = ref(false)
 const toast = ref('')
 let toastTimer = 0
+let cashierLookupRequestId = 0
+let suppressNextCashierAutoLookup = false
 
 const merchantAuthed = ref(false)
 const adminAuthed = ref(false)
@@ -932,6 +934,24 @@ onMounted(async () => {
     await tryRestoreMerchant()
   }
 })
+
+watch(
+  () => cashier.keyword,
+  (keyword) => {
+    const keywordText = normalizedCashierKeyword(keyword)
+    if (suppressNextCashierAutoLookup) {
+      suppressNextCashierAutoLookup = false
+      return
+    }
+    if (keywordText.length < 4) {
+      cashierLookupRequestId += 1
+      clearCashierLookupResult()
+      return
+    }
+    if (selectedCashierMember.value?.mobile === keywordText) return
+    void autoLookupCashierMember(keywordText)
+  }
+)
 
 async function apiGet<T>(url: string, params?: AnyMap) {
   const response = await http.get<ApiResponse<T>>(url, { params })
@@ -1234,28 +1254,70 @@ function backToMembers() {
 function setCashierMode(mode: CashierMode) {
   cashierMode.value = mode
   selectedCashierMember.value = null
+  candidateMembers.value = []
+  candidateModalVisible.value = false
   cashier.amount = ''
   activeCashierInput.value = 'keyword'
+  const keywordText = normalizedCashierKeyword()
+  if (keywordText.length >= 4) void autoLookupCashierMember(keywordText)
   void guarded(loadRecentTransactions)
 }
 
 async function lookupCashierMember() {
   await guarded(async () => {
-    const result = await apiGet<AnyMap>('/merchant/members/lookup', { keyword: cashier.keyword.trim() })
-    if (result.matchType === 'NONE') {
-      selectedCashierMember.value = null
-      throw new Error('未找到会员')
-    }
-    if (result.matchType === 'SUFFIX_MULTIPLE') {
-      candidateMembers.value = result.candidates || []
-      candidateModalVisible.value = true
-      selectedCashierMember.value = null
-      return
-    }
-    selectedCashierMember.value = result.member
-    cashier.keyword = result.member.mobile
-    activeCashierInput.value = 'amount'
-  }, selectedCashierMember.value ? '会员已匹配' : undefined)
+    const keyword = normalizedCashierKeyword()
+    if (keyword.length < 4) throw new Error('请输入至少4位手机号')
+    const requestId = ++cashierLookupRequestId
+    const result = await apiGet<AnyMap>('/merchant/members/lookup', { keyword })
+    if (requestId !== cashierLookupRequestId) return
+    applyCashierLookupResult(result, { openCandidates: true, requireMatch: true })
+  })
+}
+
+async function autoLookupCashierMember(keyword: string) {
+  const requestId = ++cashierLookupRequestId
+  try {
+    const result = await apiGet<AnyMap>('/merchant/members/lookup', { keyword })
+    if (requestId !== cashierLookupRequestId || normalizedCashierKeyword() !== keyword) return
+    applyCashierLookupResult(result, { openCandidates: false, requireMatch: false })
+  } catch {
+    // Auto lookup is silent; manual lookup still reports failures through guarded().
+  }
+}
+
+function applyCashierLookupResult(result: AnyMap, options: { openCandidates: boolean; requireMatch: boolean }) {
+  if (result.matchType === 'NONE') {
+    clearCashierLookupResult()
+    if (options.requireMatch) throw new Error('未找到会员')
+    return false
+  }
+  if (result.matchType === 'SUFFIX_MULTIPLE') {
+    selectedCashierMember.value = null
+    candidateMembers.value = result.candidates || []
+    candidateModalVisible.value = options.openCandidates
+    return false
+  }
+  if (!result.member) {
+    clearCashierLookupResult()
+    if (options.requireMatch) throw new Error('未找到会员')
+    return false
+  }
+  selectedCashierMember.value = result.member
+  cashier.keyword = result.member.mobile
+  candidateMembers.value = []
+  candidateModalVisible.value = false
+  activeCashierInput.value = 'amount'
+  return true
+}
+
+function normalizedCashierKeyword(value: unknown = cashier.keyword) {
+  return String(value ?? '').replace(/\D/g, '').slice(0, 11)
+}
+
+function clearCashierLookupResult() {
+  selectedCashierMember.value = null
+  candidateMembers.value = []
+  candidateModalVisible.value = false
 }
 
 function chooseCandidate(candidate: AnyMap) {
@@ -1281,16 +1343,15 @@ function pressCashierKey(key: string) {
 
 function pressCashierKeywordKey(key: string) {
   if (key === 'back') {
+    suppressNextCashierAutoLookup = true
     cashier.keyword = cashier.keyword.slice(0, -1)
-    selectedCashierMember.value = null
-    candidateMembers.value = []
+    clearCashierLookupResult()
     return
   }
   if (!/^\d$/.test(key)) return
   if (cashier.keyword.length >= 11) return
   cashier.keyword = `${cashier.keyword}${key}`
-  selectedCashierMember.value = null
-  candidateMembers.value = []
+  clearCashierLookupResult()
 }
 
 function pressCashierAmountKey(key: string) {
