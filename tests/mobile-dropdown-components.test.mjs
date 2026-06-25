@@ -16,15 +16,20 @@ function hasRuleWith(selector, requiredSnippets) {
   })
 }
 
-test('mobile and modal dropdowns use the controlled AppSelect component', () => {
+test('mobile and modal dropdowns use controlled components outside the compact cashier panel', () => {
   assert.doesNotMatch(appVue, /<select\b/, 'App.vue should not open native mobile select menus in form and filter surfaces')
   assert.doesNotMatch(dashboardVue, /<select\b/, 'DashboardView should not open native mobile select menus in its modal')
 
   assert.match(appVue, /import AppSelect from '@\/components\/AppSelect\.vue'/, 'App.vue should use the shared dropdown component')
   assert.match(dashboardVue, /import AppSelect from '@\/components\/AppSelect\.vue'/, 'DashboardView should use the shared dropdown component')
 
-  assert.ok((appVue.match(/<AppSelect\b/g) || []).length >= 6, 'App.vue should replace each form/filter select')
+  assert.ok((appVue.match(/<AppSelect\b/g) || []).length >= 5, 'App.vue should replace form/filter selects that still need option menus')
   assert.ok((dashboardVue.match(/<AppSelect\b/g) || []).length >= 1, 'DashboardView should replace the member level select')
+
+  const cashierViewStart = appVue.indexOf('<section v-else class="mobile-content cashier-view">')
+  const cashierViewEnd = appVue.indexOf('<nav class="bottom-tabs">', cashierViewStart)
+  const cashierView = appVue.slice(cashierViewStart, cashierViewEnd)
+  assert.doesNotMatch(cashierView, /<AppSelect\b/, 'cashier page should use compact non-dropdown controls to keep one-screen layout')
 })
 
 test('AppSelect menu overlays below its field without expanding form layout', () => {

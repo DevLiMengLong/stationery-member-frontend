@@ -103,43 +103,44 @@
           <div class="mobile-content">
             <h3>设置充值优惠梯度</h3>
             <p class="muted">共4档固定梯度，自主决定每档的充值金额和赠送金额</p>
-            <article
-              v-for="tier in tiers"
-              :key="tier.tierNo"
-              class="tier-card"
-              :class="{ editing: editingTier === Number(tier.tierNo) }"
-              :role="editingTier === Number(tier.tierNo) ? undefined : 'button'"
-              :tabindex="editingTier === Number(tier.tierNo) ? undefined : 0"
-              :aria-label="`编辑第 ${tier.tierNo} 档充值梯度`"
-              @click="editingTier !== Number(tier.tierNo) && editTier(tier)"
-              @keydown.enter="editingTier !== Number(tier.tierNo) && editTier(tier)"
-              @keydown.space.prevent="editingTier !== Number(tier.tierNo) && editTier(tier)"
-            >
-              <template v-if="editingTier === Number(tier.tierNo)">
-                <label>
-                  <span>充值金额</span>
-                  <input v-model="tierDraft.rechargeAmount" inputmode="decimal" min="0" step="0.01" type="number" @click.stop />
-                </label>
-                <label>
-                  <span>赠送金额</span>
-                  <input v-model="tierDraft.giftAmount" inputmode="decimal" min="0" step="0.01" type="number" @click.stop />
-                </label>
-                <div class="button-row">
-                  <button class="ghost-button" type="button" @click.stop="editingTier = 0">取消</button>
-                  <button class="primary-button" type="button" @click.stop="saveTier(Number(tier.tierNo))">保存</button>
-                </div>
-              </template>
-              <template v-else>
-                <div class="tier-summary">
-                  <span class="tier-label">第 {{ tier.tierNo }} 档</span>
-                  <strong class="tier-price">
-                    充 {{ tierAmount(tier.rechargeAmount) }}
-                    <em>送 {{ tierAmount(tier.giftAmount) }}</em>
-                  </strong>
-                </div>
-                <span class="tier-updated">{{ tier.updatedAt }}</span>
-              </template>
-            </article>
+            <section class="tier-plan-box" aria-label="充值4档方案">
+              <article
+                v-for="tier in tiers"
+                :key="tier.tierNo"
+                class="tier-card"
+                :class="{ editing: editingTier === Number(tier.tierNo) }"
+                :role="editingTier === Number(tier.tierNo) ? undefined : 'button'"
+                :tabindex="editingTier === Number(tier.tierNo) ? undefined : 0"
+                :aria-label="`编辑第 ${tier.tierNo} 档充值梯度`"
+                @click="editingTier !== Number(tier.tierNo) && editTier(tier)"
+                @keydown.enter="editingTier !== Number(tier.tierNo) && editTier(tier)"
+                @keydown.space.prevent="editingTier !== Number(tier.tierNo) && editTier(tier)"
+              >
+                <template v-if="editingTier === Number(tier.tierNo)">
+                  <label>
+                    <span>充值金额</span>
+                    <input v-model="tierDraft.rechargeAmount" inputmode="decimal" min="0" step="0.01" type="number" @click.stop />
+                  </label>
+                  <label>
+                    <span>赠送金额</span>
+                    <input v-model="tierDraft.giftAmount" inputmode="decimal" min="0" step="0.01" type="number" @click.stop />
+                  </label>
+                  <div class="button-row">
+                    <button class="ghost-button" type="button" @click.stop="editingTier = 0">取消</button>
+                    <button class="primary-button" type="button" @click.stop="saveTier(Number(tier.tierNo))">保存</button>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="tier-summary">
+                    <span class="tier-label">第 {{ tier.tierNo }} 档</span>
+                    <strong class="tier-price">
+                      充 {{ tierAmount(tier.rechargeAmount) }}
+                      <em>送 {{ tierAmount(tier.giftAmount) }}</em>
+                    </strong>
+                  </div>
+                </template>
+              </article>
+            </section>
             <h3>历史充值活动</h3>
             <article v-for="campaign in campaigns" :key="campaign.id" class="history-card">
               <strong>{{ campaign.campaignName }}</strong>
@@ -239,7 +240,7 @@
             <button class="action-card" type="button" @click="openTiers">
               <span class="action-icon">↗</span>
               <strong>设置充值梯度</strong>
-              <small>配置充值优惠方案</small>
+              <small>{{ currentRechargeTierSummary }}</small>
               <b>›</b>
             </button>
             <button class="action-card disabled" type="button" disabled>
@@ -257,9 +258,12 @@
           <section v-else-if="merchantTab === 'members'" class="mobile-content">
             <header class="list-header">
               <h1>会员</h1>
-              <button class="primary-button compact" type="button" @click="openMemberModal">＋ 添加</button>
+              <button class="primary-button compact member-action-button" type="button" @click="openMemberModal">＋ 添加</button>
             </header>
-            <input v-model="memberKeyword" class="search-input" placeholder="搜索手机号或姓名..." @keyup.enter="searchMerchantMembers" />
+            <div class="member-search-row">
+              <input v-model="memberKeyword" class="search-input" placeholder="搜索手机号或姓名..." @keyup.enter="searchMerchantMembers" />
+              <button class="compact member-action-button member-search-button" type="button" @click="searchMerchantMembers">搜索</button>
+            </div>
             <article v-for="member in members" :key="member.id" class="member-row" @click="openMember(member)">
               <div class="avatar" :class="avatarToneClass(member.avatarUrl)">
                 <img v-if="avatarImageSrc(member.avatarUrl)" :src="avatarImageSrc(member.avatarUrl)" alt="" />
@@ -292,25 +296,8 @@
                 <span>扣款</span>
               </button>
             </div>
-            <h2>{{ cashierMode === 'RECHARGE' ? '充值输入' : '扣款输入' }}</h2>
-            <section class="cashier-panel" :class="{ blue: cashierMode === 'CONSUMPTION' }">
-              <div class="cashier-form-grid">
-                <input v-model="cashier.keyword" placeholder="输入完整手机号或后4位" />
-                <button class="ghost-button" type="button" @click="lookupCashierMember">{{ selectedCashierMember ? selectedCashierMember.name : '会员姓名' }}</button>
-                <input v-model="cashier.amount" placeholder="输入金额" inputmode="decimal" />
-                <AppSelect v-model="cashier.paymentMethod" :options="PAYMENT_METHOD_OPTIONS" aria-label="支付方式" />
-              </div>
-              <input v-if="cashierMode === 'CONSUMPTION'" v-model="cashier.itemName" placeholder="项目名称" />
-              <input v-model="cashier.remark" placeholder="备注" />
-              <div class="keypad">
-                <button v-for="key in keypad" :key="key" type="button" @click="pressAmountKey(key)">{{ key === 'back' ? '⌫' : key }}</button>
-              </div>
-              <button class="primary-button full" type="button" :disabled="!canSubmitCashier" @click="submitCashier">
-                {{ cashierMode === 'RECHARGE' ? '确认充值' : '确认扣款' }}
-              </button>
-            </section>
             <h3 class="recent-title">最近{{ cashierMode === 'RECHARGE' ? '充值' : '扣款' }}</h3>
-            <article v-for="tx in recentTransactions" :key="tx.id" class="recent-card" :class="{ blue: cashierMode === 'CONSUMPTION' }">
+            <article v-for="tx in latestRecentTransactions" :key="tx.id" class="recent-card" :class="{ blue: cashierMode === 'CONSUMPTION' }">
               <header class="recent-card-head">
                 <span>流水号：{{ tx.serialNo }}</span>
                 <strong class="recent-status">{{ cashierStatusText(tx) }}</strong>
@@ -325,7 +312,29 @@
                 <span>剩余余额: <strong>{{ money(tx.afterTotalBalance) }}</strong></span>
               </footer>
             </article>
-            <p v-if="!recentTransactions.length" class="empty-state recent-empty">暂无最近{{ cashierMode === 'RECHARGE' ? '充值' : '扣款' }}记录</p>
+            <p v-if="!latestRecentTransactions.length" class="empty-state recent-empty">暂无最近{{ cashierMode === 'RECHARGE' ? '充值' : '扣款' }}记录</p>
+            <h2>{{ cashierMode === 'RECHARGE' ? '充值输入' : '扣款输入' }}</h2>
+            <section class="cashier-panel" :class="{ blue: cashierMode === 'CONSUMPTION' }">
+              <div class="cashier-form-grid">
+                <div class="cashier-field">
+                  <span aria-hidden="true">☎</span>
+                  <input v-model="cashier.keyword" aria-label="会员手机号" placeholder="输入后4位" />
+                </div>
+                <button class="ghost-button cashier-member-button" type="button" @click="lookupCashierMember">{{ selectedCashierMember ? selectedCashierMember.name : '会员姓名' }}</button>
+                <div class="cashier-field">
+                  <span aria-hidden="true">¥</span>
+                  <input v-model="cashier.amount" aria-label="收银金额" placeholder="输入金额" inputmode="decimal" />
+                </div>
+                <input v-if="cashierMode === 'CONSUMPTION'" v-model="cashier.itemName" class="cashier-side-input" placeholder="消费项目" />
+                <button v-else class="cashier-side-action" type="button" disabled>多充<br />多赠</button>
+              </div>
+              <div class="keypad">
+                <button v-for="key in keypad" :key="key" type="button" @click="pressAmountKey(key)">{{ key === 'back' ? '⌫' : key }}</button>
+              </div>
+              <button class="primary-button full" type="button" :disabled="!canSubmitCashier" @click="submitCashier">
+                {{ cashierMode === 'RECHARGE' ? '确认充值' : '确认扣款' }}
+              </button>
+            </section>
           </section>
 
           <nav class="bottom-tabs">
@@ -709,13 +718,6 @@ type PageState = { pageNo: number; pageSize: number }
 type ApiPageState = PageState & { total: number; pages: number }
 type BuiltinAvatar = { value: string; label: string; glyph: string; tone: string }
 
-const PAYMENT_METHOD_OPTIONS: AppSelectOption[] = [
-  { value: 'CASH', label: '现金' },
-  { value: 'WECHAT', label: '微信' },
-  { value: 'ALIPAY', label: '支付宝' },
-  { value: 'CARD', label: '银行卡' },
-  { value: 'OTHER', label: '其他' }
-]
 const STORE_STATUS_OPTIONS: AppSelectOption[] = [
   { value: '', label: '全部状态' },
   { value: 'ACTIVE', label: '正常' },
@@ -782,7 +784,7 @@ const merchantResetVisible = ref(false)
 const resetForm = reactive({ mobile: '', code: '', password: '' })
 
 const cashierMode = ref<CashierMode>('RECHARGE')
-const cashier = reactive({ keyword: '', amount: '', paymentMethod: 'CASH', itemName: '', remark: '' })
+const cashier = reactive({ keyword: '', amount: '', paymentMethod: 'CASH', itemName: '' })
 const selectedCashierMember = ref<AnyMap | null>(null)
 const candidateMembers = ref<AnyMap[]>([])
 const candidateModalVisible = ref(false)
@@ -819,6 +821,7 @@ const adminMemberFilter = reactive({
 const correctionForm = reactive({ correctionType: 'ADD_RECHARGE', amount: '', reason: '' })
 
 const canSubmitCashier = computed(() => Boolean(selectedCashierMember.value?.id && Number(cashier.amount) > 0))
+const latestRecentTransactions = computed(() => recentTransactions.value.slice(0, 1))
 const adminTitle = computed(() => {
   if (adminTab.value === 'stores') return '门店账号管理'
   if (adminTab.value === 'members') return '会员管理'
@@ -840,6 +843,14 @@ const adminOverviewStorePageInfo = computed(() => paginateLocal(rows(adminOvervi
 const visibleAdminOverviewStores = computed(() => adminOverviewStorePageInfo.value.records)
 const activityPageInfo = computed(() => paginateLocal(activityRows.value, activityPage))
 const visibleActivityRows = computed(() => activityPageInfo.value.records)
+const currentRechargeTierSummary = computed(() => {
+  const summary = tiers.value
+    .slice()
+    .sort((left, right) => Number(left.tierNo) - Number(right.tierNo))
+    .map((tier) => `${tierAmount(tier.rechargeAmount)}-${tierAmount(tier.giftAmount)}`)
+    .join('  ')
+  return summary || '暂无充值方案'
+})
 
 function defaultPageSize() {
   if (typeof window !== 'undefined'
@@ -1044,7 +1055,7 @@ async function loadMerchantMembers() {
 async function loadRecentTransactions() {
   recentTransactions.value = await apiGet<AnyMap[]>('/merchant/transactions/recent', {
     type: cashierMode.value === 'RECHARGE' ? 'RECHARGE' : 'CONSUMPTION',
-    limit: 3
+    limit: 1
   })
 }
 
@@ -1250,12 +1261,11 @@ async function submitCashier() {
       amount: cashier.amount,
       paymentMethod: cashier.paymentMethod,
       itemName: cashierMode.value === 'RECHARGE' ? '会员充值' : cashier.itemName || '消费扣款',
-      remark: cashier.remark,
       idempotencyKey: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
     }
     await apiPost(cashierMode.value === 'RECHARGE' ? '/merchant/transactions/recharge' : '/merchant/transactions/consume', body)
     cashier.amount = ''
-    cashier.remark = ''
+    cashier.itemName = ''
     await Promise.all([loadRecentTransactions(), loadDashboard(), loadMerchantMembers()])
   }, cashierMode.value === 'RECHARGE' ? '充值成功' : '扣款成功')
 }
