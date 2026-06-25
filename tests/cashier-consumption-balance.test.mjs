@@ -63,6 +63,26 @@ test('cashier phone placeholder stays fully visible on narrow screens', () => {
   )
 })
 
+test('cashier amount is entered only from the on-page keypad', () => {
+  const cashier = cashierView()
+
+  assert.match(
+    cashier,
+    /<input\s+v-model="cashier\.amount"\s+aria-label="收银金额"\s+placeholder="0\.00"\s+inputmode="none"\s+readonly\s+autocomplete="off"\s+@focus="blurCashierAmountInput"\s+@pointerdown\.prevent="blurCashierAmountInput"\s+\/>/,
+    'cashier amount input should not open a system keyboard in recharge or deduction mode'
+  )
+  assert.match(
+    appVue,
+    /function blurCashierAmountInput\(event: Event\)[\s\S]*const input = event\.target as HTMLInputElement[\s\S]*input\.blur\(\)/,
+    'cashier amount input should blur if it receives focus'
+  )
+  assert.match(
+    cashier,
+    /<button v-for="key in keypad" :key="key" type="button" @click="pressAmountKey\(key\)">/,
+    'cashier keypad buttons should remain the only amount-entry controls'
+  )
+})
+
 test('admin consumption records keep reserved item name field', () => {
   assert.match(
     appVue,
@@ -73,5 +93,41 @@ test('admin consumption records keep reserved item name field', () => {
     appVue,
     /itemName: cashierMode\.value === 'RECHARGE' \? '会员充值' : '消费扣款'/,
     'merchant deduction submissions should keep a default item name for the reserved admin field'
+  )
+})
+
+test('cashier submission refreshes selected member balance from transaction result', () => {
+  assert.match(
+    appVue,
+    /const transaction = await apiPost<AnyMap>\([\s\S]*\/merchant\/transactions\/consume[\s\S]*\)/,
+    'cashier submission should keep the successful transaction payload returned by the backend'
+  )
+  assert.match(
+    appVue,
+    /syncSelectedCashierMemberBalance\(transaction\)/,
+    'cashier submission should update the selected member balance immediately after a successful transaction'
+  )
+  assert.match(
+    appVue,
+    /function syncSelectedCashierMemberBalance\(transaction: AnyMap\)[\s\S]*selectedCashierMember\.value = \{[\s\S]*selectedCashierMember\.value,[\s\S]*totalBalance: transaction\.afterTotalBalance[\s\S]*\}/,
+    'selected cashier member totalBalance should be replaced with the transaction afterTotalBalance value'
+  )
+})
+
+test('cashier submission clears member and amount inputs after success', () => {
+  assert.match(
+    appVue,
+    /function clearCashierForm\(\)[\s\S]*cashier\.keyword = ''[\s\S]*cashier\.amount = ''[\s\S]*selectedCashierMember\.value = null[\s\S]*candidateMembers\.value = \[\][\s\S]*candidateModalVisible\.value = false/,
+    'successful cashier submission should clear phone, amount, selected member name, balance, and stale candidates'
+  )
+  assert.match(
+    appVue,
+    /syncSelectedCashierMemberBalance\(transaction\)\s*[\r\n]+\s*clearCashierForm\(\)/,
+    'cashier submission should clear visible cashier form state after the backend transaction succeeds'
+  )
+  assert.doesNotMatch(
+    appVue,
+    /syncSelectedCashierMemberBalance\(transaction\)\s*[\r\n]+\s*cashier\.amount = ''/,
+    'cashier submission should not leave phone/member/balance state uncleared by only clearing the amount'
   )
 })

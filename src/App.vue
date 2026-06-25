@@ -337,7 +337,7 @@
                   <span class="cashier-field-label">{{ cashierMode === 'RECHARGE' ? '充值金额' : '扣款金额' }}</span>
                   <div class="cashier-field">
                     <span aria-hidden="true">¥</span>
-                    <input v-model="cashier.amount" aria-label="收银金额" placeholder="0.00" inputmode="decimal" />
+                    <input v-model="cashier.amount" aria-label="收银金额" placeholder="0.00" inputmode="none" readonly autocomplete="off" @focus="blurCashierAmountInput" @pointerdown.prevent="blurCashierAmountInput" />
                   </div>
                 </div>
                 <div v-if="cashierMode === 'CONSUMPTION'" class="cashier-balance-card">
@@ -1270,6 +1270,29 @@ function pressAmountKey(key: string) {
   cashier.amount = `${cashier.amount}${key}`
 }
 
+function blurCashierAmountInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  input.blur()
+}
+
+function syncSelectedCashierMemberBalance(transaction: AnyMap) {
+  if (!selectedCashierMember.value || transaction.memberId !== selectedCashierMember.value.id) return
+  selectedCashierMember.value = {
+    ...selectedCashierMember.value,
+    rechargeBalance: transaction.afterRechargeBalance ?? selectedCashierMember.value.rechargeBalance,
+    giftBalance: transaction.afterGiftBalance ?? selectedCashierMember.value.giftBalance,
+    totalBalance: transaction.afterTotalBalance
+  }
+}
+
+function clearCashierForm() {
+  cashier.keyword = ''
+  cashier.amount = ''
+  selectedCashierMember.value = null
+  candidateMembers.value = []
+  candidateModalVisible.value = false
+}
+
 async function submitCashier() {
   if (!selectedCashierMember.value) return
   await guarded(async () => {
@@ -1280,8 +1303,9 @@ async function submitCashier() {
       itemName: cashierMode.value === 'RECHARGE' ? '会员充值' : '消费扣款',
       idempotencyKey: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
     }
-    await apiPost(cashierMode.value === 'RECHARGE' ? '/merchant/transactions/recharge' : '/merchant/transactions/consume', body)
-    cashier.amount = ''
+    const transaction = await apiPost<AnyMap>(cashierMode.value === 'RECHARGE' ? '/merchant/transactions/recharge' : '/merchant/transactions/consume', body)
+    syncSelectedCashierMemberBalance(transaction)
+    clearCashierForm()
     await Promise.all([loadRecentTransactions(), loadDashboard(), loadMerchantMembers()])
   }, cashierMode.value === 'RECHARGE' ? '充值成功' : '扣款成功')
 }
