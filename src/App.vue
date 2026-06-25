@@ -327,17 +327,17 @@
               <div class="cashier-form-grid">
                 <div class="cashier-control">
                   <span class="cashier-field-label">会员手机号</span>
-                  <div class="cashier-field cashier-phone-field">
+                  <div class="cashier-field cashier-phone-field" :class="{ active: activeCashierInput === 'keyword' }">
                     <span aria-hidden="true">⌕</span>
-                    <input v-model="cashier.keyword" aria-label="会员手机号" placeholder="输入手机号或后4位" />
+                    <input v-model="cashier.keyword" aria-label="会员手机号" placeholder="输入手机号或后4位" inputmode="none" readonly autocomplete="off" @focus="activateCashierInput('keyword', $event)" @pointerdown.prevent="activateCashierInput('keyword', $event)" />
                   </div>
                 </div>
                 <button class="ghost-button cashier-member-button" type="button" @click="lookupCashierMember">{{ selectedCashierMember ? selectedCashierMember.name : '会员姓名' }}</button>
                 <div class="cashier-control">
                   <span class="cashier-field-label">{{ cashierMode === 'RECHARGE' ? '充值金额' : '扣款金额' }}</span>
-                  <div class="cashier-field">
+                  <div class="cashier-field" :class="{ active: activeCashierInput === 'amount' }">
                     <span aria-hidden="true">¥</span>
-                    <input v-model="cashier.amount" aria-label="收银金额" placeholder="0.00" inputmode="none" readonly autocomplete="off" @focus="blurCashierAmountInput" @pointerdown.prevent="blurCashierAmountInput" />
+                    <input v-model="cashier.amount" aria-label="收银金额" placeholder="0.00" inputmode="none" readonly autocomplete="off" @focus="activateCashierInput('amount', $event)" @pointerdown.prevent="activateCashierInput('amount', $event)" />
                   </div>
                 </div>
                 <div v-if="cashierMode === 'CONSUMPTION'" class="cashier-balance-card">
@@ -347,7 +347,7 @@
                 <button v-else class="cashier-side-action" type="button" disabled>多充<br />多赠</button>
               </div>
               <div class="keypad">
-                <button v-for="key in keypad" :key="key" type="button" @click="pressAmountKey(key)">{{ key === 'back' ? '⌫' : key }}</button>
+                <button v-for="key in keypad" :key="key" type="button" @click="pressCashierKey(key)">{{ key === 'back' ? '⌫' : key }}</button>
               </div>
               <button class="primary-button full" type="button" :disabled="!canSubmitCashier" @click="submitCashier">
                 {{ cashierMode === 'RECHARGE' ? '确认充值' : '确认扣款' }}
@@ -730,6 +730,7 @@ type AppMode = 'merchant' | 'admin'
 type MerchantTab = 'marketing' | 'members' | 'cashier' | 'mine'
 type MerchantScreen = 'tabs' | 'profile' | 'tiers' | 'memberDetail'
 type CashierMode = 'RECHARGE' | 'CONSUMPTION'
+type CashierInputTarget = 'keyword' | 'amount'
 type AdminTab = 'overview' | 'stores' | 'members' | 'activity'
 type PageChange = { pageNo: number; pageSize: number }
 type PageState = { pageNo: number; pageSize: number }
@@ -803,6 +804,7 @@ const resetForm = reactive({ mobile: '', code: '', password: '' })
 
 const cashierMode = ref<CashierMode>('RECHARGE')
 const cashier = reactive({ keyword: '', amount: '', paymentMethod: 'CASH' })
+const activeCashierInput = ref<CashierInputTarget>('keyword')
 const selectedCashierMember = ref<AnyMap | null>(null)
 const candidateMembers = ref<AnyMap[]>([])
 const candidateModalVisible = ref(false)
@@ -1233,6 +1235,7 @@ function setCashierMode(mode: CashierMode) {
   cashierMode.value = mode
   selectedCashierMember.value = null
   cashier.amount = ''
+  activeCashierInput.value = 'keyword'
   void guarded(loadRecentTransactions)
 }
 
@@ -1251,6 +1254,7 @@ async function lookupCashierMember() {
     }
     selectedCashierMember.value = result.member
     cashier.keyword = result.member.mobile
+    activeCashierInput.value = 'amount'
   }, selectedCashierMember.value ? '会员已匹配' : undefined)
 }
 
@@ -1258,9 +1262,38 @@ function chooseCandidate(candidate: AnyMap) {
   selectedCashierMember.value = candidate
   cashier.keyword = candidate.mobile
   candidateModalVisible.value = false
+  activeCashierInput.value = 'amount'
 }
 
-function pressAmountKey(key: string) {
+function activateCashierInput(target: CashierInputTarget, event?: Event) {
+  activeCashierInput.value = target
+  const input = event?.target as HTMLInputElement | undefined
+  input?.blur()
+}
+
+function pressCashierKey(key: string) {
+  if (activeCashierInput.value === 'keyword') {
+    pressCashierKeywordKey(key)
+    return
+  }
+  pressCashierAmountKey(key)
+}
+
+function pressCashierKeywordKey(key: string) {
+  if (key === 'back') {
+    cashier.keyword = cashier.keyword.slice(0, -1)
+    selectedCashierMember.value = null
+    candidateMembers.value = []
+    return
+  }
+  if (!/^\d$/.test(key)) return
+  if (cashier.keyword.length >= 11) return
+  cashier.keyword = `${cashier.keyword}${key}`
+  selectedCashierMember.value = null
+  candidateMembers.value = []
+}
+
+function pressCashierAmountKey(key: string) {
   if (key === 'back') {
     cashier.amount = cashier.amount.slice(0, -1)
     return
@@ -1268,11 +1301,6 @@ function pressAmountKey(key: string) {
   if (key === '.' && cashier.amount.includes('.')) return
   if (cashier.amount.includes('.') && cashier.amount.split('.')[1]?.length >= 2) return
   cashier.amount = `${cashier.amount}${key}`
-}
-
-function blurCashierAmountInput(event: Event) {
-  const input = event.target as HTMLInputElement
-  input.blur()
 }
 
 function syncSelectedCashierMemberBalance(transaction: AnyMap) {
@@ -1291,6 +1319,7 @@ function clearCashierForm() {
   selectedCashierMember.value = null
   candidateMembers.value = []
   candidateModalVisible.value = false
+  activeCashierInput.value = 'keyword'
 }
 
 async function submitCashier() {

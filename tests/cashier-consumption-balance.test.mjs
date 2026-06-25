@@ -38,7 +38,7 @@ test('cashier phone placeholder stays fully visible on narrow screens', () => {
 
   assert.match(
     cashier,
-    /<div class="cashier-field cashier-phone-field">\s*<span aria-hidden="true">⌕<\/span>\s*<input v-model="cashier\.keyword" aria-label="会员手机号" placeholder="输入手机号或后4位" \/>/,
+    /<div class="cashier-field cashier-phone-field" :class="\{ active: activeCashierInput === 'keyword' \}">\s*<span aria-hidden="true">⌕<\/span>\s*<input v-model="cashier\.keyword" aria-label="会员手机号" placeholder="输入手机号或后4位" inputmode="none" readonly autocomplete="off" @focus="activateCashierInput\('keyword', \$event\)" @pointerdown\.prevent="activateCashierInput\('keyword', \$event\)" \/>/,
     'phone lookup input should have a dedicated field class for compact placeholder styling'
   )
   assert.equal(
@@ -68,18 +68,46 @@ test('cashier amount is entered only from the on-page keypad', () => {
 
   assert.match(
     cashier,
-    /<input\s+v-model="cashier\.amount"\s+aria-label="收银金额"\s+placeholder="0\.00"\s+inputmode="none"\s+readonly\s+autocomplete="off"\s+@focus="blurCashierAmountInput"\s+@pointerdown\.prevent="blurCashierAmountInput"\s+\/>/,
+    /<div class="cashier-field" :class="\{ active: activeCashierInput === 'amount' \}">\s*<span aria-hidden="true">¥<\/span>\s*<input\s+v-model="cashier\.amount"\s+aria-label="收银金额"\s+placeholder="0\.00"\s+inputmode="none"\s+readonly\s+autocomplete="off"\s+@focus="activateCashierInput\('amount', \$event\)"\s+@pointerdown\.prevent="activateCashierInput\('amount', \$event\)"\s+\/>/,
     'cashier amount input should not open a system keyboard in recharge or deduction mode'
   )
   assert.match(
     appVue,
-    /function blurCashierAmountInput\(event: Event\)[\s\S]*const input = event\.target as HTMLInputElement[\s\S]*input\.blur\(\)/,
-    'cashier amount input should blur if it receives focus'
+    /function activateCashierInput\(target: CashierInputTarget, event\?: Event\)[\s\S]*activeCashierInput\.value = target[\s\S]*const input = event\?\.target as HTMLInputElement \| undefined[\s\S]*input\?\.blur\(\)/,
+    'cashier inputs should blur if they receive focus'
   )
   assert.match(
     cashier,
-    /<button v-for="key in keypad" :key="key" type="button" @click="pressAmountKey\(key\)">/,
-    'cashier keypad buttons should remain the only amount-entry controls'
+    /<button v-for="key in keypad" :key="key" type="button" @click="pressCashierKey\(key\)">/,
+    'cashier keypad buttons should drive the active cashier input'
+  )
+})
+
+test('cashier phone is entered only from the on-page keypad', () => {
+  assert.match(
+    appVue,
+    /type CashierInputTarget = 'keyword' \| 'amount'/,
+    'cashier should track whether the page keypad is editing phone or amount'
+  )
+  assert.match(
+    appVue,
+    /const activeCashierInput = ref<CashierInputTarget>\('keyword'\)/,
+    'cashier keypad should default to phone entry first'
+  )
+  assert.match(
+    appVue,
+    /function pressCashierKey\(key: string\)[\s\S]*if \(activeCashierInput\.value === 'keyword'\)[\s\S]*pressCashierKeywordKey\(key\)[\s\S]*pressCashierAmountKey\(key\)/,
+    'page keypad should route keys to the active cashier input'
+  )
+  assert.match(
+    appVue,
+    /function pressCashierKeywordKey\(key: string\)[\s\S]*cashier\.keyword = cashier\.keyword\.slice\(0, -1\)[\s\S]*if \(!\/\^\\d\$\/\.test\(key\)\) return[\s\S]*if \(cashier\.keyword\.length >= 11\) return[\s\S]*cashier\.keyword = `\$\{cashier\.keyword\}\$\{key\}`/,
+    'phone keypad entry should support backspace, digits only, and 11 digit maximum'
+  )
+  assert.match(
+    appVue,
+    /function pressCashierAmountKey\(key: string\)[\s\S]*if \(key === 'back'\)[\s\S]*cashier\.amount = cashier\.amount\.slice\(0, -1\)[\s\S]*if \(key === '\.' && cashier\.amount\.includes\('\.'\)\) return/,
+    'amount keypad entry should keep the decimal amount rules'
   )
 })
 

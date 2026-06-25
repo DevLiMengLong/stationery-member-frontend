@@ -2511,6 +2511,7 @@ tr:hover td {
   overflow: hidden;
 }
 
+.cashier-field.active,
 .cashier-field:focus-within {
   border-color: #ff7849;
   box-shadow: 0 0 0 2px rgba(255, 120, 73, 0.14);
